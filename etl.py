@@ -4,7 +4,8 @@ import pandas as pd
 import cs
 from sqlalchemy import create_engine
 import os 
-
+import transformation as ts
+import Tables 
 pwd = "password"
 uid = "etl"
 
@@ -35,10 +36,14 @@ def extract():
         for tbl in src_tables:
             #query and load save data to dataframe
             df_2021_asma = pd.read_sql_query(f'select * FROM {tbl[0]}', src_conn)        
-            print (df_2021_asma)
+
+        df_2017=ts.transform_data2017(df_2017_asma)
+        df_2021=ts.transform_data2017(df_2021_asma)
+        concat_data = ts.join_df(df_2017,df_2021)
+        print (concat_data)
 
 
-            
+
         #load(df, "dbo.Datos_2021_sin_asma")
     except Exception as e:
         print("Data extract error: " + str(e))
@@ -53,10 +58,10 @@ def load(df, tbl):
     try:
         rows_imported = 0
         engine = create_engine(f'postgresql://{uid}:{pwd}@{server}:5432/'+database)
-        print(f'importing rows {rows_imported} to {rows_imported + len(df)}... for table {tbl}')
-        # save df to postgres
-        df.to_sql(f'stg_{tbl}', engine, if_exists='replace', index=False)
-        rows_imported += len(df)
+        Tables.Base.metadata.create_all(engine)
+
+        
+        
         # add elapsed time to final print out
         print("Data imported successful")
     except Exception as e:
