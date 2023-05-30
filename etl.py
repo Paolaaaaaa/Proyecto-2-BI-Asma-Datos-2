@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Sequence
+from sqlalchemy.sql import text
 
 Base = declarative_base()
 
@@ -38,13 +39,13 @@ class Encuestado(Base):
 class Pregunta(Base):
     __tablename__ = 'pregunta'
     pk_pregunta = Column(Integer, Sequence('pregunta_seq'),primary_key=True )
-    pregunta = Column(String,primary_key=True)
+    pregunta = Column(String)
 
 class Respuesta (Base):
     __tablename__ = 'respuesta'
     
     pk_respuesta = Column(Integer, Sequence('respuesta_seq'),primary_key=True )
-    respuesta = Column(String,primary_key=True)
+    respuesta = Column(String)
 
 class hecho_respuesta (Base):
     __tablename__ = 'hecho_respuesta'
@@ -53,8 +54,9 @@ class hecho_respuesta (Base):
     pk_fecha = Column(Integer, ForeignKey('fecha.pk_fecha'))
     pk_ubicacion = Column(Integer, ForeignKey('ubicacion.pk_ubicacion'))
     pk_encuestado = Column (Integer, ForeignKey('encuestado.pk_encuestado'))
-    pk_Respuesta = Column(Integer,ForeignKey('respuesta.pk_respuesta'))
     pk_pregunta = Column(Integer, ForeignKey('pregunta.pk_pregunta'))
+    pk_respuesta = Column(Integer,ForeignKey('respuesta.pk_respuesta'))
+
     numero_personas = Column(Integer)
 
 
@@ -109,7 +111,7 @@ def create_pregunta(engine):
 
     pregunta = ['"Transmilenio"',
        '"SITP"', '"buseta_o_colectivo"', '"automovil_particular"', '"Taxi"',
-       '"Motocicleta"', '"Bicicleta"', 'Ruta_escolar"', '"A_pie"', '"NPCHP18J"',
+       '"Motocicleta"', '"Bicicleta"', 'Ruta_escolar"', '"A_pie"',
        'bicitaxi_o_mototaxi', 'caballo', 'otros', 'ANIO', 'no_se_desplaza',
        '"vehículo_patineta_moto_electicos"',
        '"particulares_plataformas_o_aplicaciones"', '"Bus_intermunicipal"']
@@ -132,10 +134,127 @@ def create_respuesta(engine):
     session.close()
 
 
+def create_respuesta_h (df, engine):
+    pregunta = ['"Transmilenio"',
+       '"SITP"', '"buseta_o_colectivo"', '"automovil_particular"', '"Taxi"',
+       '"Motocicleta"', '"Bicicleta"', 'Ruta_escolar"', '"A_pie"',
+       'bicitaxi_o_mototaxi', 'caballo', 'otros', 'ANIO', 'no_se_desplaza',
+       '"vehículo_patineta_moto_electicos"',
+       '"particulares_plataformas_o_aplicaciones"', '"Bus_intermunicipal"']
+    session = Session(bind=engine)
+    for index, row in df.iterrows():
+        for i in pregunta:
+            fecha = row['"ANIO"']
+            edad = row['"edad"']
+            sexo = row['"sexo"']
+            localidad = row['"localidad"']
+            municipio = row['"municipio"']
+            respuesta = row[i]
+            pkubicacion = pk_ubicacion(engine,localidad,municipio )
+            pkfecha = pk_fecha(engine,fecha)
+            pkencuestado = pk_encuestado(engine, edad,sexo)
+            if i is not None and  respuesta is not None:
+                pkpregunta = pk_pregunta(engine, i)
+                pkrespuesta = pk_respuesta(engine, respuesta)
+
+                exists = find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pkrespuesta[0])
+            else:
+                exists = find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],3,3)
+
+
+                if (exists is None):
+                    nuevo_dato = hecho_respuesta(pk_fecha= pkfecha[0], pk_ubicacion = pkubicacion[0], pk_encuestado= pkencuestado[0], pk_respuesta = pkrespuesta[0], pk_pregunta = pkpregunta[0], numero_personas = 1)
+                    session.add(nuevo_dato)
+                else:
+                    update_count_people(engine,id=exists)
+            session.commit()
+
+            session.close()
 
 
 
 
+
+
+
+
+
+def pk_ubicacion(engine, localidad, municipio):
+    print ("Buscando ubicación")
+    localidad = localidad.replace('"', '\'')
+    municipio = municipio.replace('"', '\'')
+
+    query = text("SELECT pk_ubicacion FROM ubicacion WHERE localidad = "+str(localidad)+" and municipio = "+str(municipio))
+    conn = engine.connect()
+    pk = conn.execute(query).fetchone()
+    conn.close()
+    return  pk
+
+def pk_fecha(engine, anio):
+    print ("Buscando fecha")
+
+    anio = anio.replace('"', '\'')
+    query = text("SELECT pk_fecha FROM fecha WHERE anio = "+str(anio))
+    conn = engine.connect()
+    pk = conn.execute(query).fetchone()
+    conn.close()
+    return  pk
+
+def pk_encuestado(engine,edad, sexo) :
+    print ("Buscando encuestado")
+
+    edad = edad.replace('"', '\'')
+    sexo = sexo.replace('"', '\'')
+
+    query = text("SELECT pk_encuestado FROM encuestado WHERE edad = "+str(edad)+" and sexo ="+str(sexo))
+    conn = engine.connect()
+    pk = conn.execute(query).fetchone()
+    conn.close()
+    return  pk
+
+
+def pk_pregunta(engine, pregunta):
+    print ("Buscando pregunta")
+
+    pregunta = pregunta.replace('"', '\'')
+    pregunta = pregunta.strip('"')
+
+    query = text("SELECT pk_pregunta FROM pregunta WHERE pregunta = "+str(pregunta))
+    conn = engine.connect()
+    pk = conn.execute(query).fetchone()
+    conn.close()
+    return  pk
+
+def pk_respuesta(engine,respuesta) :
+    print ("Buscando respuesta")
+    if respuesta is None:
+        pk = 3
+    else:
+        respuesta = respuesta.replace('"', '\'')
+
+        query = text("SELECT pk_respuesta FROM respuesta WHERE respuesta = '"+str(respuesta)+"'")
+        conn = engine.connect()
+        pk = conn.execute(query).fetchone()
+        conn.close()
+    return  pk
+
+def find_pairs(engine, pk_fecha ,  pk_ubicacion ,pk_encuestado, pk_pregunta, pk_respuesta):
+    print ("Buscando pk")
+
+    query = text("SELECT id FROM hecho_respuesta WHERE pk_fecha = "+str(pk_fecha)+ " and pk_ubicacion =  "+str(pk_ubicacion)+ " and pk_encuestado= "+str(pk_encuestado)+" and pk_pregunta= "+str(pk_pregunta)+" and pk_respuesta ="+str(pk_respuesta))
+    conn = engine.connect()
+    print ("hu")
+    pk = conn.execute(query).fetchone()
+    print (pk)
+    conn.close()
+    return  pk
+
+def update_count_people (engine, id):
+    print ("Update pepople")
+
+    query = text("UPDATE hecho_respuesta WHERE id = "+str(id)+ "values numero_personas = numero_personas + 1 ")
+    conn = engine.connect(query)
+    conn.close()
 
 
 rows_imported = 0
@@ -209,6 +328,7 @@ def load(df):
             create_encuestado(df, engine)
             create_respuesta( engine)
             create_pregunta( engine)
+            #create_respuesta_h(df, engine)
 
         # La conexión se estableció correctament
 
