@@ -89,5 +89,6 @@ def transform_data2017(df):
 
 def join_df (df_2017,df_2021):
     frames = [df_2017,df_2021]
-
-    return pd.concat(frames)
+    concat_pd=pd.concat(frames)
+    concat_pd.fillna(3)
+    return concat_pd
