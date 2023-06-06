@@ -45,8 +45,9 @@ class Encuestado(Base):
     pk_encuestado = Column(Integer, Sequence('encuestado_seq'),primary_key=True )
     edad = Column(Integer)
     sexo = Column(Integer)
+    id = Column(Integer)
     __table_args__ = (
-        UniqueConstraint('edad', 'sexo', name='uq_edad_anio'),
+        UniqueConstraint('edad', 'sexo','id', name='uq_edad_anio'),
     )
 
 class Pregunta(Base):
@@ -61,7 +62,7 @@ class Respuesta (Base):
     __tablename__ = 'respuesta'
     
     pk_respuesta = Column(Integer, Sequence('respuesta_seq'),primary_key=True )
-    respuesta = Column(String)
+    respuesta = Column(Integer)
     __table_args__ = (
         UniqueConstraint('respuesta', name='uq_respuesta'),
     )
@@ -124,18 +125,23 @@ def create_encuestado(df, engine):
     session = Session(bind=engine)
     edades=df['edad'].unique()
     sexos=df['sexo'].unique()
+    ids = df['id'].unique()
+    for k in ids:
     
-    for i in edades:
-        for j in sexos:
-            j = j.replace('"', '')
-            try:
+        for i in edades:
+            for j in sexos:
+                j = j.replace('"', '')
+                i = i.replace('"', '')
+                k = k.replace('"', '')
 
-                nuevo_dato=Encuestado(edad= i, sexo = j)
-                session.add(nuevo_dato)
-                session.commit()
-                session.close()
-            except:
-                pass
+                try:
+
+                    nuevo_dato=Encuestado(edad= int(i), sexo = int(j),id=int(k))
+                    session.add(nuevo_dato)
+                    session.commit()
+                    session.close()
+                except:
+                    pass
     
 
 
@@ -146,7 +152,7 @@ def create_pregunta(engine):
     pregunta = ['Transmilenio',
        'SITP', 'buseta_o_colectivo', 'automovil_particular', 'Taxi',
        'Motocicleta', 'Bicicleta', 'Ruta_escolar', 'A_pie',
-       'bicitaxi_o_mototaxi', 'caballo', 'otros', 'ANIO', 'no_se_desplaza',
+       'bicitaxi_o_mototaxi', 'caballo', 'otros', 'no_se_desplaza',
        'vehículo_patineta_moto_electicos',
        'particulares_plataformas_o_aplicaciones', 'Bus_intermunicipal']
     for i in pregunta:
@@ -160,7 +166,7 @@ def create_respuesta(engine):
     session = Session(bind=engine)
 
     
-    for i in ["1","2","3"]:
+    for i in [1,2,3]:
             nuevo_dato=Respuesta(respuesta= i)
             session.add(nuevo_dato)
     session.commit()
@@ -185,20 +191,31 @@ def create_respuesta_h (df, engine):
             localidad = row['localidad']
             municipio = row['municipio']
             respuesta = row[i]
+            id_enc = row['id']
             pkubicacion = pk_ubicacion(engine,localidad,municipio )
             pkfecha = pk_fecha(engine,fecha)
-            pkencuestado = pk_encuestado(engine, edad,sexo)
+            pkencuestado = pk_encuestado(engine, edad,sexo,id_enc)
             if i is not None and  respuesta is not None:
                 pkpregunta = pk_pregunta(engine, i)
+                try:
              
-                pkrespuesta = pk_respuesta(engine, respuesta)
+                    pkrespuesta = pk_respuesta(engine, respuesta)
+                except:
+                    pass
                 if (pkrespuesta == 3):
-                        print(i)
-                        find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pk_nill[0])
+                        if (pk_ubicacion is not None or pk_encuestado is not None):
+                            try:
+                                find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pk_nill[0])
+                            except:
+                                pass
                 else:
-                        find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pkrespuesta[0])
+                        if (pk_ubicacion is not None or pk_encuestado is not None):
+                            try:
 
-            
+                                find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pkrespuesta[0])
+
+                            except:
+                                pass
 
 
 
@@ -208,7 +225,7 @@ def create_respuesta_h (df, engine):
 def get_null(engine):
     print ("Buscando nulo")
 
-    query = text("SELECT pk_respuesta FROM respuesta WHERE respuesta = '3'")
+    query = text("SELECT pk_respuesta FROM respuesta WHERE respuesta = 3")
     conn = engine.connect()
     pk = conn.execute(query).fetchone()
     conn.close()
@@ -239,12 +256,13 @@ def pk_fecha(engine, anio):
     conn.close()
     return  pk
 
-def pk_encuestado(engine,edad, sexo) :
+def pk_encuestado(engine,edad, sexo, id) :
     print ("Buscando encuestado")
 
     edad = edad.replace('"', '')
     sexo = sexo.replace('"', '')
-    query = text("SELECT pk_encuestado FROM encuestado WHERE edad = "+str(edad)+" and sexo ="+str(sexo))
+    id = id.replace('"','')
+    query = text("SELECT pk_encuestado FROM encuestado WHERE id ="+str(id)+" and  edad = "+str(edad)+" and sexo ="+str(sexo))
     conn = engine.connect()
     pk = conn.execute(query).fetchone()
     conn.close()

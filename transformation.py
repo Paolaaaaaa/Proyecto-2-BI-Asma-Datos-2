@@ -2,7 +2,7 @@ import pandas as pd
 
 
 def transform_data2021(df):
-    columnas_de_interes_2021 = [
+    columnas_de_interes_2021 = ['""',
     '"NPCEP5"',
     '"NOMBRE_LOCALIDAD"',
     '"NPCEP4"',
@@ -28,7 +28,8 @@ def transform_data2021(df):
     df_asma_bogota_2021['ANIO']="2021"
 
     df_asma_bogota_2021.rename(columns = {
-        '"NPCEP5"':'sexo',
+        '""':'id',
+    '"NPCEP5"':'sexo',
     '"NOMBRE_LOCALIDAD"':'localidad',
     '"NPCEP4"':'edad',
     '"MPIO"':'municipio',
@@ -55,7 +56,7 @@ def transform_data2021(df):
 
 
 def transform_data2017(df):
-    columnas_de_interes_2017 = ['"LOCALIDAD_TEX"','"NPCEP5"','"NPCEP4"','"DPTOMPIO"','"NPCFP14B"', '"NPCHP18A"',  '"NPCHP18B"', '"NPCHP18C"', '"NPCHP18D"', '"NPCHP18E"', '"NPCHP18F"', '"NPCHP18G"', '"NPCHP18H"', '"NPCHP18I"', '"NPCHP18J"' , '"NPCHP18K"', '"NPCHP18L"' ,'"NPCHP18M"']
+    columnas_de_interes_2017 = ['"LOCALIDAD_TEX"','"NPCEP5"','"NPCEP4"','"DPTOMPIO"','"NPCFP14B"', '"NPCHP18A"',  '"NPCHP18B"', '"NPCHP18C"', '"NPCHP18D"', '"NPCHP18E"', '"NPCHP18F"', '"NPCHP18G"', '"NPCHP18H"', '"NPCHP18I"', '"NPCHP18J"' , '"NPCHP18K"', '"NPCHP18L"' ,'"NPCHP18M"','""']
     df_asma_asma_2017 = df[columnas_de_interes_2017]
     df_asma_bogota_2017=df_asma_asma_2017[df_asma_asma_2017['"DPTOMPIO"']=="11001"]
     df_asma_bogota_2017['ANIO']="2017"
@@ -66,6 +67,7 @@ def transform_data2017(df):
 
     df_asma_bogota_2017.rename(columns = {
         '"NPCEP5"':'sexo',
+    '""':'id',
     '"LOCALIDAD_TEX"':'localidad',
     '"NPCEP4"':'edad',
     '"DPTOMPIO"':'municipio',
