@@ -1,4 +1,5 @@
 
+import psycopg2
 import pyodbc
 import pandas as pd 
 import cs
@@ -7,6 +8,9 @@ import os
 import transformation as ts
 import Tables 
 from sqlalchemy.orm import Session
+import math
+from psycopg2 import OperationalError, errorcodes, errors
+from sqlalchemy import exc
 
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -155,7 +159,16 @@ def create_respuesta_h (df, engine):
             pkencuestado = pk_encuestado(engine, edad,sexo)
             if i is not None and  respuesta is not None:
                 pkpregunta = pk_pregunta(engine, i)
-                pkrespuesta = pk_respuesta(engine, respuesta)
+                try:
+                    pkrespuesta = pk_respuesta(engine, respuesta)
+                    if (pkrespuesta == 3):
+                        print(pkfecha)
+                        exists = find_pairs(engine,pkfecha,pkubicacion,pkencuestado,3,3)
+                    else:
+                        exists = find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pkrespuesta[0])
+
+                except:
+                    pass
 
                 exists = find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pkrespuesta[0])
             else:
@@ -225,18 +238,25 @@ def pk_pregunta(engine, pregunta):
     conn.close()
     return  pk
 
-def pk_respuesta(engine,respuesta) :
-    print ("Buscando respuesta")
-    if respuesta is None:
+def pk_respuesta(engine, respuesta):
+    print("Buscando respuesta")
+
+    if respuesta is None :
         pk = 3
     else:
-        respuesta = respuesta.replace('"', '\'')
+        try:
+            respuesta = respuesta.replace('"', '\'')
+            query = text("SELECT pk_respuesta FROM respuesta WHERE respuesta = " + str(respuesta))
+            conn = engine.connect()
+            pk = conn.execute(query).fetchone()
+            conn.close()
 
-        query = text("SELECT pk_respuesta FROM respuesta WHERE respuesta = '"+str(respuesta)+"'")
-        conn = engine.connect()
-        pk = conn.execute(query).fetchone()
-        conn.close()
-    return  pk
+        except Exception as e:
+            print("wtf")
+            return 3
+
+    return pk
+
 
 def find_pairs(engine, pk_fecha ,  pk_ubicacion ,pk_encuestado, pk_pregunta, pk_respuesta):
     print ("Buscando pk")
@@ -328,11 +348,11 @@ def load(df):
             create_encuestado(df, engine)
             create_respuesta( engine)
             create_pregunta( engine)
-            #create_respuesta_h(df, engine)
+            create_respuesta_h(df, engine)
 
         # La conexión se estableció correctament
 
-        
+    
         # add elapsed time to final print out
         print("Data imported successful")
     except Exception as e:

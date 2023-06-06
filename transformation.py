@@ -91,4 +91,5 @@ def join_df (df_2017,df_2021):
     frames = [df_2017,df_2021]
     concat_pd=pd.concat(frames)
     concat_pd.fillna(3)
+    print(concat_pd)
     return concat_pd
