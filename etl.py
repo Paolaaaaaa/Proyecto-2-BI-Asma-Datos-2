@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 import math
 from psycopg2 import OperationalError, errorcodes, errors
 from sqlalchemy import exc
+from sqlalchemy import Column, Integer, String, Sequence, UniqueConstraint
 
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -24,12 +25,18 @@ class Ubicacion(Base):
     pk_ubicacion = Column(Integer, Sequence('ubicacion_seq'),primary_key=True )
     localidad = Column(String)
     municipio = Column(Integer)
+    __table_args__ = (
+        UniqueConstraint('localidad', 'municipio', name='uq_localidad_municipio'),
+    )
 
 class Fecha(Base):
     __tablename__ = 'fecha'
     
     pk_fecha = Column(Integer, Sequence('fecha_seq'),primary_key=True )
     anio = Column(Integer)
+    __table_args__ = (
+        UniqueConstraint('anio', name='uq_unio'),
+    )
 
 
 class Encuestado(Base):
@@ -38,23 +45,32 @@ class Encuestado(Base):
     pk_encuestado = Column(Integer, Sequence('encuestado_seq'),primary_key=True )
     edad = Column(Integer)
     sexo = Column(Integer)
-
+    __table_args__ = (
+        UniqueConstraint('edad', 'sexo', name='uq_edad_anio'),
+    )
 
 class Pregunta(Base):
     __tablename__ = 'pregunta'
     pk_pregunta = Column(Integer, Sequence('pregunta_seq'),primary_key=True )
     pregunta = Column(String)
+    __table_args__ = (
+        UniqueConstraint('pregunta', name='uq_pregunta'),
+    )
 
 class Respuesta (Base):
     __tablename__ = 'respuesta'
     
     pk_respuesta = Column(Integer, Sequence('respuesta_seq'),primary_key=True )
     respuesta = Column(String)
+    __table_args__ = (
+        UniqueConstraint('respuesta', name='uq_respuesta'),
+    )
 
-class hecho_respuesta (Base):
+
+class Hecho_respuesta (Base):
     __tablename__ = 'hecho_respuesta'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, Sequence('h_res_seq'),primary_key=True)
     pk_fecha = Column(Integer, ForeignKey('fecha.pk_fecha'))
     pk_ubicacion = Column(Integer, ForeignKey('ubicacion.pk_ubicacion'))
     pk_encuestado = Column (Integer, ForeignKey('encuestado.pk_encuestado'))
@@ -66,59 +82,73 @@ class hecho_respuesta (Base):
 
 
 
+
 def create_ubicacion(df, engine):
     session = Session(bind=engine)
 
-    localidades=df['"localidad"'].unique()
-    municipio=df['"municipio"'].unique()
+    localidades=df['localidad'].unique()
+    municipio=df['municipio'].unique()
 
     for i in localidades:
         for j in municipio:
+            i = i.replace('"', "")
+            i= i.lower()
             nuevo_dato=Ubicacion(localidad= i, municipio = j)
-            session.add(nuevo_dato)
-    session.commit()
+            try:
+                session.add(nuevo_dato)
+                session.commit()
 
-    session.close()
+                session.close()
+            except:
+                pass
+
 
 
 
 def create_fecha(df, engine):
     session = Session(bind=engine)
 
-    localidades=df['"ANIO"'].unique()
+    localidades=df['ANIO'].unique()
+    try:
+        for i in localidades:
+                nuevo_dato=Fecha(anio= i)
+                session.add(nuevo_dato)
+        session.commit()
 
-    for i in localidades:
-            nuevo_dato=Fecha(anio= i)
-            session.add(nuevo_dato)
-    session.commit()
-
-    session.close()
+        session.close()
+    except:
+        pass
 
 
 def create_encuestado(df, engine):
     session = Session(bind=engine)
-    edades=df['"edad"'].unique()
-    sexos=df['"sexo"'].unique()
-
+    edades=df['edad'].unique()
+    sexos=df['sexo'].unique()
+    
     for i in edades:
         for j in sexos:
-            nuevo_dato=Encuestado(edad= i, sexo = j)
-            session.add(nuevo_dato)
-    session.commit()
+            j = j.replace('"', '')
+            try:
 
-    session.close()
+                nuevo_dato=Encuestado(edad= i, sexo = j)
+                session.add(nuevo_dato)
+                session.commit()
+                session.close()
+            except:
+                pass
+    
 
 
 
 def create_pregunta(engine):
     session = Session(bind=engine)
 
-    pregunta = ['"Transmilenio"',
-       '"SITP"', '"buseta_o_colectivo"', '"automovil_particular"', '"Taxi"',
-       '"Motocicleta"', '"Bicicleta"', 'Ruta_escolar"', '"A_pie"',
+    pregunta = ['Transmilenio',
+       'SITP', 'buseta_o_colectivo', 'automovil_particular', 'Taxi',
+       'Motocicleta', 'Bicicleta', 'Ruta_escolar', 'A_pie',
        'bicitaxi_o_mototaxi', 'caballo', 'otros', 'ANIO', 'no_se_desplaza',
-       '"vehículo_patineta_moto_electicos"',
-       '"particulares_plataformas_o_aplicaciones"', '"Bus_intermunicipal"']
+       'vehículo_patineta_moto_electicos',
+       'particulares_plataformas_o_aplicaciones', 'Bus_intermunicipal']
     for i in pregunta:
             nuevo_dato=Pregunta(pregunta = i)
             session.add(nuevo_dato)
@@ -130,7 +160,7 @@ def create_respuesta(engine):
     session = Session(bind=engine)
 
     
-    for i in ["1","2","NAN"]:
+    for i in ["1","2","3"]:
             nuevo_dato=Respuesta(respuesta= i)
             session.add(nuevo_dato)
     session.commit()
@@ -139,74 +169,70 @@ def create_respuesta(engine):
 
 
 def create_respuesta_h (df, engine):
-    pregunta = ['"Transmilenio"',
-       '"SITP"', '"buseta_o_colectivo"', '"automovil_particular"', '"Taxi"',
-       '"Motocicleta"', '"Bicicleta"', 'Ruta_escolar"', '"A_pie"',
-       'bicitaxi_o_mototaxi', 'caballo', 'otros', 'ANIO', 'no_se_desplaza',
-       '"vehículo_patineta_moto_electicos"',
-       '"particulares_plataformas_o_aplicaciones"', '"Bus_intermunicipal"']
+    pregunta = ['Transmilenio',
+       'SITP', 'buseta_o_colectivo', 'automovil_particular', 'Taxi',
+       'Motocicleta', 'Bicicleta', 'Ruta_escolar', 'A_pie',
+       'bicitaxi_o_mototaxi', 'caballo', 'otros', 'no_se_desplaza',
+       'vehículo_patineta_moto_electicos',
+       'particulares_plataformas_o_aplicaciones', 'Bus_intermunicipal']
+    pk_nill = get_null(engine)
     session = Session(bind=engine)
     for index, row in df.iterrows():
         for i in pregunta:
-            fecha = row['"ANIO"']
-            edad = row['"edad"']
-            sexo = row['"sexo"']
-            localidad = row['"localidad"']
-            municipio = row['"municipio"']
+            fecha = row['ANIO']
+            edad = row['edad']
+            sexo = row['sexo']
+            localidad = row['localidad']
+            municipio = row['municipio']
             respuesta = row[i]
             pkubicacion = pk_ubicacion(engine,localidad,municipio )
             pkfecha = pk_fecha(engine,fecha)
             pkencuestado = pk_encuestado(engine, edad,sexo)
             if i is not None and  respuesta is not None:
                 pkpregunta = pk_pregunta(engine, i)
-                try:
-                    pkrespuesta = pk_respuesta(engine, respuesta)
-                    if (pkrespuesta == 3):
-                        print(pkfecha)
-                        exists = find_pairs(engine,pkfecha,pkubicacion,pkencuestado,3,3)
-                    else:
-                        exists = find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pkrespuesta[0])
-
-                except:
-                    pass
-
-                exists = find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pkrespuesta[0])
-            else:
-                exists = find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],3,3)
-
-
-                if (exists is None):
-                    nuevo_dato = hecho_respuesta(pk_fecha= pkfecha[0], pk_ubicacion = pkubicacion[0], pk_encuestado= pkencuestado[0], pk_respuesta = pkrespuesta[0], pk_pregunta = pkpregunta[0], numero_personas = 1)
-                    session.add(nuevo_dato)
+             
+                pkrespuesta = pk_respuesta(engine, respuesta)
+                if (pkrespuesta == 3):
+                        print(i)
+                        find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pk_nill[0])
                 else:
-                    update_count_people(engine,id=exists)
-            session.commit()
+                        find_pairs(engine,pkfecha[0],pkubicacion[0],pkencuestado[0],pkpregunta[0],pkrespuesta[0])
 
-            session.close()
-
+            
 
 
 
 
 
 
+def get_null(engine):
+    print ("Buscando nulo")
 
-
-def pk_ubicacion(engine, localidad, municipio):
-    print ("Buscando ubicación")
-    localidad = localidad.replace('"', '\'')
-    municipio = municipio.replace('"', '\'')
-
-    query = text("SELECT pk_ubicacion FROM ubicacion WHERE localidad = "+str(localidad)+" and municipio = "+str(municipio))
+    query = text("SELECT pk_respuesta FROM respuesta WHERE respuesta = '3'")
     conn = engine.connect()
     pk = conn.execute(query).fetchone()
     conn.close()
     return  pk
 
+def pk_ubicacion(engine, localidad, municipio):
+    print ("Buscando ubicación")
+
+    localidad = localidad.replace('"', "'")
+    municipio = municipio.replace('"', "")
+    localidad = localidad.lower()
+    
+
+    query = text("SELECT pk_ubicacion FROM ubicacion WHERE localidad = "+localidad+" AND municipio = "+str(municipio)+";")
+    conn = engine.connect()
+    pk = conn.execute(query).fetchone()
+    conn.close()
+    print(pk)
+    return  pk
+
 def pk_fecha(engine, anio):
     print ("Buscando fecha")
 
-    anio = anio.replace('"', '\'')
+    anio = anio.replace('"', '')
     query = text("SELECT pk_fecha FROM fecha WHERE anio = "+str(anio))
     conn = engine.connect()
     pk = conn.execute(query).fetchone()
@@ -216,9 +242,8 @@ def pk_fecha(engine, anio):
 def pk_encuestado(engine,edad, sexo) :
     print ("Buscando encuestado")
 
-    edad = edad.replace('"', '\'')
-    sexo = sexo.replace('"', '\'')
-
+    edad = edad.replace('"', '')
+    sexo = sexo.replace('"', '')
     query = text("SELECT pk_encuestado FROM encuestado WHERE edad = "+str(edad)+" and sexo ="+str(sexo))
     conn = engine.connect()
     pk = conn.execute(query).fetchone()
@@ -229,10 +254,9 @@ def pk_encuestado(engine,edad, sexo) :
 def pk_pregunta(engine, pregunta):
     print ("Buscando pregunta")
 
-    pregunta = pregunta.replace('"', '\'')
-    pregunta = pregunta.strip('"')
-
-    query = text("SELECT pk_pregunta FROM pregunta WHERE pregunta = "+str(pregunta))
+    pregunta = pregunta.replace('"', "'")
+    print(pregunta)
+    query = text("SELECT pk_pregunta FROM pregunta WHERE pregunta = '"+pregunta+"'")
     conn = engine.connect()
     pk = conn.execute(query).fetchone()
     conn.close()
@@ -245,14 +269,13 @@ def pk_respuesta(engine, respuesta):
         pk = 3
     else:
         try:
-            respuesta = respuesta.replace('"', '\'')
+            respuesta = respuesta.replace('"', '')
             query = text("SELECT pk_respuesta FROM respuesta WHERE respuesta = " + str(respuesta))
             conn = engine.connect()
             pk = conn.execute(query).fetchone()
             conn.close()
 
         except Exception as e:
-            print("wtf")
             return 3
 
     return pk
@@ -261,19 +284,53 @@ def pk_respuesta(engine, respuesta):
 def find_pairs(engine, pk_fecha ,  pk_ubicacion ,pk_encuestado, pk_pregunta, pk_respuesta):
     print ("Buscando pk")
 
-    query = text("SELECT id FROM hecho_respuesta WHERE pk_fecha = "+str(pk_fecha)+ " and pk_ubicacion =  "+str(pk_ubicacion)+ " and pk_encuestado= "+str(pk_encuestado)+" and pk_pregunta= "+str(pk_pregunta)+" and pk_respuesta ="+str(pk_respuesta))
+    query = text("SELECT id FROM hecho_respuesta WHERE pk_fecha = "+str(int(pk_fecha))+ " and pk_ubicacion =  "+str(int(pk_ubicacion))+ " and pk_encuestado= "+str(int(pk_encuestado))+" and pk_pregunta= "+str(int(pk_pregunta))+" and pk_respuesta ="+str(int(pk_respuesta)))
     conn = engine.connect()
-    print ("hu")
-    pk = conn.execute(query).fetchone()
-    print (pk)
-    conn.close()
+    try:
+        pk = conn.execute(query).fetchone()
+
+    except Exception as e:
+            print("nuevo dato")
+            session = Session(bind=engine)
+
+
+            nuevo_dato = Hecho_respuesta(pk_fecha= int(pk_fecha), pk_ubicacion = int(pk_ubicacion), pk_encuestado= int(pk_encuestado), pk_respuesta = int(pk_pregunta), pk_pregunta = int(pk_pregunta), numero_personas = 1)
+            session.add(nuevo_dato)
+            session.commit()
+            session.close()
+
+            return None
+    
+    if (pk is None):
+            print("nuevo dato")
+            session = Session(bind=engine)
+
+
+            nuevo_datos = Hecho_respuesta(pk_fecha= pk_fecha, pk_ubicacion = pk_ubicacion, pk_encuestado= pk_encuestado, pk_respuesta = pk_respuesta, pk_pregunta = pk_pregunta, numero_personas = 1)
+            print(nuevo_datos)
+            session.add(nuevo_datos)
+            session.commit()
+            session.close()
+
+            return None
+    else:
+
+        print("update")
+
+        update_count_people(engine,id=pk)
+        conn.commit()
+        conn.close()
     return  pk
 
 def update_count_people (engine, id):
-    print ("Update pepople")
+    print (id)
 
-    query = text("UPDATE hecho_respuesta WHERE id = "+str(id)+ "values numero_personas = numero_personas + 1 ")
-    conn = engine.connect(query)
+    query = text("UPDATE hecho_respuesta SET numero_personas = numero_personas + 1 WHERE id = "+str(id[0]) )
+    print(query)
+    conn = engine.connect()
+    pk = conn.execute(query)
+    conn.commit()
+
     conn.close()
 
 
@@ -334,7 +391,7 @@ def extract():
 
 def load(df):
     try:
-        engine = create_engine(f'postgresql://{uid}:{pwd}@localhost:5432/'+database)
+        engine = create_engine(f'postgresql://{uid}:{pwd}@localhost:5432/'+database,pool_size=10000)
 
         with engine.connect() as connection:
             print("¡Conexión exitosa!")
