@@ -121,7 +121,7 @@ def create_fecha(df, engine):
         pass
 
 
-def create_encuestado(df, engine):
+def create_encuestados(df, engine):
     session = Session(bind=engine)
     edades=df['edad'].unique()
     sexos=df['sexo'].unique()
@@ -143,7 +143,20 @@ def create_encuestado(df, engine):
                 except:
                     pass
     
+def create_encuestado(engine, edad, sexo, id):
+    session = Session(bind=engine)
+    edad = edad.replace('"', '')
+    sexo = sexo.replace('"', '')
+    id = id.replace('"', '')
+    try:
 
+        nuevo_dato=Encuestado(edad= int(edad), sexo = int(sexo),id=int(id))
+        print(nuevo_dato.pk_encuestado)
+        session.add(nuevo_dato)
+        session.commit()
+        session.close()
+    except:
+                pass
 
 
 def create_pregunta(engine):
@@ -194,6 +207,8 @@ def create_respuesta_h (df, engine):
             id_enc = row['id']
             pkubicacion = pk_ubicacion(engine,localidad,municipio )
             pkfecha = pk_fecha(engine,fecha)
+
+            create_encuestado(engine,edad, sexo,id_enc)
             pkencuestado = pk_encuestado(engine, edad,sexo,id_enc)
             if i is not None and  respuesta is not None:
                 pkpregunta = pk_pregunta(engine, i)
@@ -262,10 +277,12 @@ def pk_encuestado(engine,edad, sexo, id) :
     edad = edad.replace('"', '')
     sexo = sexo.replace('"', '')
     id = id.replace('"','')
-    query = text("SELECT pk_encuestado FROM encuestado WHERE id ="+str(id)+" and  edad = "+str(edad)+" and sexo ="+str(sexo))
+    query = text("SELECT pk_encuestado FROM encuestado WHERE id = "+str(int(id))+";")
+    print(query)
     conn = engine.connect()
     pk = conn.execute(query).fetchone()
     conn.close()
+    print(pk)
     return  pk
 
 
@@ -420,7 +437,7 @@ def load(df):
             create_ubicacion(df, engine)
 
             create_fecha(df,engine)
-            create_encuestado(df, engine)
+            #create_encuestado(df, engine)
             create_respuesta( engine)
             create_pregunta( engine)
             create_respuesta_h(df, engine)
